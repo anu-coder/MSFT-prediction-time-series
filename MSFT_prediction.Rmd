@@ -1,0 +1,108 @@
+---
+title: "Microsoft's Stock Price prediction"
+output:
+  html_document:
+    df_print: paged
+---
+
+Several research studies on stock predictions have been conducted with various solution techniques proposed over the years. The prominent techniques fall into two broad categories, namely, statistical and soft computing techniques. The purpose of this study was to check if econometric models preformed better than machine learning models in time series prediction. I have covered a few of the Statistical techniques covered i.e. simple exponential smoothing (SES), autoregressive integrated moving average (ARIMA). The ARIMA model is commonly used in analysis and forecasting, were as, the SES is also used for the same but where the forecasting data has no trend or seasonal pattern in them. The soft computing/machine learning techniques covered are Artificial Neural Network (ANN) and Support Vector Regression (SVR). ANNs and SVRs have been found to be very efficient in solving nonlinear problems.
+
+We compare the above four methods to predict the close price of Microsoft Inc (MSFT).
+
+### Input Data
+
+The data used for all the above methods (ARIMA, SES, ANN, and SVR) were historical daily prices of the MSFT (Microsoft Inc). The adjusted closing price was chosen to be modeled and predicted. This is because the adjusted closing price reflects not only reflects the closing price as a starting point, but it takes into account factors such as dividends, stock splits and new stock offerings to determine a value. The adjusted closing price represents a more accurate reflection of a stock’s value since distributions and new offerings can alter the closing price. This study used the Microsoft stock data used that covered the period from January 01, 1992, to June 20, 2018, having a total number of 6669 observations.
+
+The ANN and SVM method were fed with one day lagged values, so that they can be used to predict the next day’s close price (AdjCloseL1).
+
+A train and test set was created which was common for all the four methods. The range was as follows:
+
+Training Set Range: *13 March 1986 - 1 February 2019*
+Test Set Range: *2 February 2019 - 1 August 2020*
+
+
+
+```{r}
+suppressMessages(library(forecast))
+suppressMessages(library(tseries))
+suppressMessages(library(quantmod))
+suppressMessages(library(caret))
+suppressMessages(library(nnet))
+
+# Data Reading
+data <- read.csv("MSFT.csv",header=T)
+head(data)
+```
+
+```{r}
+dim(data)
+```
+
+
+```{r}
+# Daily Seasonality (frequency set to 1 for daily data)
+msft <- ts(data[,2],frequency=1)
+head(msft)
+```
+
+
+```{r}
+# Delimit training range
+msft.train <- window(msft,end=c(8291,1))
+head(msft.train)
+```
+
+
+```{r}
+# Delimit testing range
+msft.test <- window(msft, start=c(8292,1))
+
+```
+
+
+```{r}
+plot(msft,main="MSFT 1992-2018",ylab="Price",xlab="Days")
+lines(msft.train,col="blue")
+lines(msft.test,col="green")
+legend("bottomright",col=c("blue","green"),lty=1,legend=c("Training","Testing"))
+
+```
+
+### ANN
+
+```{r}
+colnames(data) <- c("Date","AdjClose")
+data$AdjCloseL1 <- Lag(data$AdjClose,1)
+data <- na.omit(data)
+# Delimit training range
+data.train <- data[1:8291,]
+# Delimit testing range
+data.test <- data[8292:8400,]
+
+```
+
+```{r}
+#N Net Function for Close Price
+set.seed(1)
+neural.price.model <- nnet(AdjClose ~ AdjCloseL1, data = data.train,
+                           maxit=10000,  size = 10, decay = 0.00001, linout = 1, skip=TRUE, MaxNWts=10000, trace=FALSE)
+#Predict Close Price on test data
+data.test$NN_Prediction <- predict(neural.price.model, newdata = data.test)
+
+#calculate RMS error
+rmse <- sqrt(mean((data.test$NN_Prediction-data.test$AdjClose)^2))
+rmse
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
